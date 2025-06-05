@@ -1,0 +1,15 @@
+{
+    "routes": [
+      {
+        "route": "/api/*",
+        "methods": ["GET", "POST", "PUT"],
+        "allowedRoles": ["anonymous"]
+      }
+    ],
+    "navigationFallback": {
+      "rewrite": "/index.html"
+    },
+    "platform": {
+      "apiRuntime": "node:18"
+    }
+  }

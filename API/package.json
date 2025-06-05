@@ -1,0 +1,13 @@
+{
+    "name": "nuculture-api",
+    "version": "1.0.0",
+    "description": "NuCulture Media Pipeline API",
+    "scripts": {
+      "start": "func start"
+    },
+    "dependencies": {
+      "@sendgrid/mail": "^7.7.0",
+      "axios": "^1.6.0",
+      "crypto": "^1.0.1"
+    }
+  }
