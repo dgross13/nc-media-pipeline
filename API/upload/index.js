@@ -132,19 +132,6 @@ async function handlePrepareUpload(context, req) {
         throw error;
     }
 }
-    
-    // Get upload URL from B2
-    const uploadUrlResponse = await axios.post(
-        `${auth.apiUrl}/b2api/v2/b2_get_upload_url`,
-        { bucketId: B2_BUCKET_ID },
-        {
-            headers: {
-                'Authorization': auth.authorizationToken,
-                'Content-Type': 'application/json'
-            }
-        }
-    );
-    
     const uploadData = uploadUrlResponse.data;
     
     // Create the full upload URL with auth token
