@@ -1,11 +1,6 @@
 {
   "routes": [
     {
-      "route": "/api/*",
-      "methods": ["GET", "POST", "PUT"],
-      "allowedRoles": ["anonymous"]
-    },
-    {
       "route": "/api/upload/*",
       "methods": ["GET", "POST"],
       "rewrite": "/api/upload"
@@ -14,8 +9,5 @@
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": ["/api/*"]
-  },
-  "platform": {
-    "apiRuntime": "node:18"
   }
 }
