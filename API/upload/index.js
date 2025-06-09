@@ -34,6 +34,9 @@ module.exports = async function (context, req) {
             case 'complete':
                 await handleUploadComplete(context, req);
                 break;
+            case 'test':
+                await testB2Connection(context);
+                break;
             default:
                 context.res = {
                     status: 400,
@@ -44,7 +47,10 @@ module.exports = async function (context, req) {
         context.log.error('API Error:', error);
         context.res = {
             status: 500,
-            body: { error: error.message }
+            body: { 
+                error: error.message,
+                details: error.stack
+            }
         };
     }
 };
@@ -54,20 +60,78 @@ async function handlePrepareUpload(context, req) {
     
     context.log('Preparing upload for:', fileName);
     
-    // Authorize B2
-    const auth = await authorizeB2();
-    
-    // Generate file path
-    const timestamp = Date.now();
-    const fileId = `${timestamp}_${crypto.randomBytes(4).toString('hex')}`;
-    
-    let filePath;
-    if (metadata.uploadType === 'raw') {
-        const editorEmail = metadata.editor.split('@')[0];
-        filePath = `raw_uploads/${editorEmail}/${timestamp}_${metadata.clientName.replace(/\s+/g, '_')}/${fileName}`;
-    } else {
-        filePath = `edited_uploads/review/${timestamp}_${metadata.projectName.replace(/\s+/g, '_')}/${fileName}`;
+    try {
+        // Authorize B2
+        const auth = await authorizeB2();
+        context.log('B2 Auth successful:', {
+            apiUrl: auth.apiUrl,
+            hasToken: !!auth.authorizationToken,
+            bucketId: B2_BUCKET_ID
+        });
+        
+        // Generate file path
+        const timestamp = Date.now();
+        const fileId = `${timestamp}_${crypto.randomBytes(4).toString('hex')}`;
+        
+        let filePath;
+        if (metadata.uploadType === 'raw') {
+            const editorEmail = metadata.editor.split('@')[0];
+            filePath = `raw_uploads/${editorEmail}/${timestamp}_${metadata.clientName.replace(/\s+/g, '_')}/${fileName}`;
+        } else {
+            filePath = `edited_uploads/review/${timestamp}_${metadata.projectName.replace(/\s+/g, '_')}/${fileName}`;
+        }
+        
+        // Get upload URL from B2
+        try {
+            context.log('Calling B2 get_upload_url with bucketId:', B2_BUCKET_ID);
+            
+            const uploadUrlResponse = await axios.post(
+                `${auth.apiUrl}/b2api/v2/b2_get_upload_url`,
+                { bucketId: B2_BUCKET_ID },
+                {
+                    headers: {
+                        'Authorization': auth.authorizationToken,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+            
+            context.log('B2 upload URL response:', uploadUrlResponse.status);
+            const uploadData = uploadUrlResponse.data;
+            
+            context.res = {
+                status: 200,
+                body: {
+                    uploadUrl: uploadData.uploadUrl,
+                    authToken: uploadData.authorizationToken,
+                    fileId: fileId,
+                    filePath: filePath
+                }
+            };
+            
+        } catch (b2Error) {
+            context.log.error('B2 get_upload_url failed:', {
+                status: b2Error.response?.status,
+                statusText: b2Error.response?.statusText,
+                data: b2Error.response?.data,
+                message: b2Error.message
+            });
+            
+            // Check specific B2 error codes
+            if (b2Error.response?.data?.code === 'bad_bucket_id') {
+                throw new Error('Invalid bucket ID. Please check B2_BUCKET_ID in Azure configuration.');
+            } else if (b2Error.response?.data?.code === 'unauthorized') {
+                throw new Error('B2 authorization failed. Check your API keys.');
+            } else {
+                throw new Error(`B2 API error: ${b2Error.response?.data?.message || b2Error.message}`);
+            }
+        }
+        
+    } catch (error) {
+        context.log.error('handlePrepareUpload error:', error.message);
+        throw error;
     }
+}
     
     // Get upload URL from B2
     const uploadUrlResponse = await axios.post(
@@ -309,6 +373,45 @@ async function sendReviewEmail(metadata, files) {
         files,
         timestamp: Date.now()
     };
+}
+
+// Add this test function to verify B2 connection
+async function testB2Connection(context) {
+    try {
+        const auth = await authorizeB2();
+        
+        // Try to list buckets
+        const bucketsResponse = await axios.post(
+            `${auth.apiUrl}/b2api/v2/b2_list_buckets`,
+            { accountId: auth.accountId },
+            {
+                headers: {
+                    'Authorization': auth.authorizationToken
+                }
+            }
+        );
+        
+        context.res = {
+            status: 200,
+            body: {
+                message: 'B2 connection successful',
+                buckets: bucketsResponse.data.buckets.map(b => ({
+                    bucketId: b.bucketId,
+                    bucketName: b.bucketName
+                })),
+                configuredBucketId: B2_BUCKET_ID
+            }
+        };
+    } catch (error) {
+        context.res = {
+            status: 500,
+            body: {
+                error: 'B2 connection test failed',
+                message: error.message,
+                details: error.response?.data
+            }
+        };
+    }
 }
 
 function formatFileSize(bytes) {
