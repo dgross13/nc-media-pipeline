@@ -1,15 +1,21 @@
 {
-    "routes": [
-      {
-        "route": "/api/*",
-        "methods": ["GET", "POST", "PUT"],
-        "allowedRoles": ["anonymous"]
-      }
-    ],
-    "navigationFallback": {
-      "rewrite": "/index.html"
+  "routes": [
+    {
+      "route": "/api/*",
+      "methods": ["GET", "POST", "PUT"],
+      "allowedRoles": ["anonymous"]
     },
-    "platform": {
-      "apiRuntime": "node:18"
+    {
+      "route": "/api/upload/*",
+      "methods": ["GET", "POST"],
+      "rewrite": "/api/upload"
     }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/api/*"]
+  },
+  "platform": {
+    "apiRuntime": "node:18"
   }
+}
