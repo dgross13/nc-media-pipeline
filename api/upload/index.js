@@ -136,17 +136,6 @@ async function handlePrepareUpload(context, req) {
     
     // Create the full upload URL with auth token
     const uploadUrl = uploadData.uploadUrl;
-    
-    context.res = {
-        status: 200,
-        body: {
-            uploadUrl: uploadUrl,
-            authToken: uploadData.authorizationToken,
-            fileId: fileId,
-            filePath: filePath
-        }
-    };
-}
 
 async function handleUploadComplete(context, req) {
     const { metadata, files } = req.body;
